@@ -1,0 +1,303 @@
+<html>
+  <head>
+    <title>Access the Pivotal Tracker API via CORS</title>
+    <script src='http://ajax.googleapis.com/ajax/libs/jquery/1.10.1/jquery.min.js'
+            type='text/javascript'></script>
+
+    <style type="text/css">
+
+/*	    #result_area {
+	    	width: 1000px;
+	    	margin: 0 auto;
+
+	    }*/
+
+      .story {
+        margin-bottom: 10px;
+/*        margin-left: auto;
+        margin-right: auto;*/
+        width: 500px;
+        height: 300px;
+        border: 4px darkorange solid;
+        padding: 0 10px 0 10px;
+        font-family: Candara, Calibri, Segoe, "Segoe UI", Optima, Arial, sans-serif;
+      }
+
+      .header {
+        padding: 8px 0 8px 0;
+        border-bottom: 1px solid;
+      }
+      
+      .name {
+        font-size: 1.4em;
+      }
+
+      .estimate {
+        float: right;
+        font-size: 1.4em;
+        width: 30px;
+        height: 30px;
+
+      }
+
+      .description {
+        
+        padding: 10px 0 10px 0;
+        float: both;
+        font-size: 0.9em;
+      }
+
+      .description {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: -webkit-box;
+        line-height: 16px;     /* fallback */
+        max-height: 230px;      /* fallback */
+        -webkit-line-clamp: 18; /* number of lines to show */
+        -webkit-box-orient: vertical;
+      }
+
+		@media all {
+			.page-break	{ display: none; }
+		}
+
+		@media print {
+			.page-break	{ display: block; page-break-before: always; }
+			
+		}
+    </style>
+  </head>
+  <body>
+
+  <form id='user_selection'>
+  	<div>
+     <h4>Pivotal Project</h4>
+
+     <label for="radio-choice-1">Journey</label>
+     <input type="radio" name="project_choice" id="project_choice_1" value="916734" checked>
+
+    <label for="radio-choice-2">Learning</label>
+    <input type="radio" name="project_choice" id="project_choice_2" value="597827">
+
+    <label for="radio-choice-2">Mobile Android</label>
+    <input type="radio" name="project_choice" id="project_choice_3" value="579041">
+  
+
+  </div>
+      <p>
+        <label for='label'>fetch stories with label:</label>
+        <input type='text' id='label_id' />
+        <a href='#' id='doit_label'>Do it!</a>
+      </p>
+      <p>
+      <label for='sprint'>fetch stories for (done, current, backlog, current_backlog) sprint:</label>
+      <input type='text' id='sprint_id' value="current"/>
+      <a href='#' id='doit_sprint'>Do it!</a>
+      <p>
+      </p>
+	  <input type="checkbox" id='feature' name="feature" value="feature" checked>only include features in result
+	  <br>
+
+    </p>
+    </form>
+    <a href='#' id='print_me'>Print me like a boss!</a>
+
+    <div id='loading'>stand-by, sneaking into pivotal labs...</div>
+	<hr>
+    <div class='results'>
+      <p id='result_title'></p>
+      <div id='result_area'>
+      </div>
+    </div>
+
+
+
+    <script type="text/javascript">
+	    var projectId;
+
+	 $( document ).ajaxStart(function() {
+ 		 $( "#loading" ).show();
+	});   
+
+	 $( document ).ajaxStop(function() {
+ 		 $( "#loading" ).hide();
+	});   
+
+    function executeTrackerApiFetch() {
+        // get parameters
+        var token = "545e39c935eea21fbcd7abb3b4d4bca9";
+        //var projectId = "916734";
+		// var token = $('#token').val();
+        // projectId = $('#project_id').val();
+        var label = $('#label_id').val();
+        console.log(label);
+
+        // get project id from radio button selection
+        var projectId = $('input[name=project_choice]:checked', '#user_selection').val()
+
+        // compose request URL
+        var url = 'https://www.pivotaltracker.com/services/v5';
+        url += '/projects/' + projectId;
+        url += '/stories?filter=state:delivered,finished,rejected,started';
+        url += ',unstarted,unscheduled';
+        url += '&fields=:default,estimate,story_type';
+        //url += '&limit=10';
+		url += '&filter=label:"'+label+'"';
+		
+		
+		//check if features wanted from featrue checkbox
+        
+        if ($('#feature').is(':checked')) {
+        	console.log("want");
+			url += ' story_type:feature';
+        };
+
+		console.log(url);
+		
+
+        // do API request to get story names
+        $.ajax({
+          url: url,
+          beforeSend: function(xhr) {
+            xhr.setRequestHeader('X-TrackerToken', token);
+          }
+        }).done(displayTrackerApiResponse);
+
+      }
+
+    function fetchTrackerIteration() {
+        // get parameters
+        var token = "545e39c935eea21fbcd7abb3b4d4bca9";
+        //var projectId = "916734";
+		// var token = $('#token').val();
+        // projectId = $('#project_id').val();
+        var label = $('#label_id').val();
+        //console.log(label);
+        var sprint = $('#sprint_id').val();
+        
+        // get project id from radio button selection
+        var projectId = $('input[name=project_choice]:checked', '#user_selection').val()
+
+
+        // compose request URL
+        var url = 'https://www.pivotaltracker.com/services/v5';
+        url += '/projects/' + projectId;
+        
+        if (sprint==='') {
+        	url += '/iterations'
+        } else {
+        	url += '/iterations?scope='+sprint;
+        };
+
+        
+        console.log(url);
+
+
+        //do API request to iteration stories
+        $.ajax({
+          url: url,
+          beforeSend: function(xhr) {
+            xhr.setRequestHeader('X-TrackerToken', token);
+          }
+        }).done(getStoriesFromIteration);
+
+      }
+
+      function getStoriesFromIteration(iteration) {
+      	stories = iteration[0].stories;
+      	clean_stories =[];
+
+      	// check if features wanted from featrue checkbox
+        var want_features = $('input[name=feature]:checked', '#user_selection').val()
+
+      	// remove stories that are not features
+      	if (want_features==="feature") {
+	      	for (var i = 0; i < stories.length; i++) {
+	      		if (stories[i].story_type==="feature") {clean_stories.push(stories[i])};
+	      	};
+
+	      displayTrackerApiResponse(clean_stories);
+
+      	} else {
+
+      		displayTrackerApiResponse(stories);;
+      	}
+
+
+      	
+      }
+
+
+      function displayTrackerApiResponse(stories) {
+      	//console.log(stories);
+        
+        var search_results = "Here go your " + stories.length + " stories, dawg!";
+        $('#result_title').html(search_results);
+
+        var content = '';
+        $('#result_area').empty();
+
+        for (var i=0; i < stories.length;i++) {
+		  //console.log(stories[i]);
+          var name = stories[i].name;
+          // console.log(name);
+
+          var estimate = stories[i].estimate;
+          if (estimate===undefined) {estimate='--'};
+          // console.log(estimate);
+
+          var description = stories[i].description;
+          if (description != null) { 
+          	description = htmlForTextWithEmbeddedNewlines(description);
+          };
+
+          // console.log(description);
+
+
+          content = '<div class="story">'+'<div class="header"><span class="name">'+name+'</span><span class="estimate">'+estimate+'</span></div>'+'<div class="description">'+description+'</div>'+'</div>'+'<div class="page-break"></div>';
+          //content = 'test:'+ estimate;
+
+          $('#result_area').append(content);
+        
+        }
+        
+      }
+
+      function htmlForTextWithEmbeddedNewlines(text) {
+          var htmls = [];
+          var lines = text.split(/\n/);
+          // The temporary <div/> is to perform HTML entity encoding reliably.
+          //
+          // document.createElement() is *much* faster than jQuery('<div/>')
+          // http://stackoverflow.com/questions/268490/
+          //
+          // You don't need jQuery but then you need to struggle with browser
+          // differences in innerText/textContent yourself
+          var tmpDiv = jQuery(document.createElement('div'));
+          for (var i = 0 ; i < lines.length ; i++) {
+              htmls.push(tmpDiv.text(lines[i]).html());
+          }
+          return htmls.join("<br>");
+      }
+
+      function printLikeABoss () {
+      	$('#user_selection').hide();
+      	window.print();
+      }
+
+
+      $(function() {
+      	$( "#loading" ).hide();
+        $('#doit_label').click(executeTrackerApiFetch);
+        $('#doit_sprint').click(fetchTrackerIteration);
+        $('#print_me').click(printLikeABoss);
+
+        // $('#doit_link').click( function (event) { 
+        //   event.preventDefault();
+        //   executeTrackerApiFetch;
+        //   })     
+      });
+
+    </script>
+  </body>
+</html>
