@@ -6,8 +6,16 @@
 
     <style type="text/css">
 
+/*	    #result_area {
+	    	width: 1000px;
+	    	margin: 0 auto;
+
+	    }*/
+
       .story {
         margin-bottom: 10px;
+/*        margin-left: auto;
+        margin-right: auto;*/
         width: 500px;
         height: 300px;
         border: 4px darkorange solid;
@@ -49,35 +57,103 @@
         -webkit-box-orient: vertical;
       }
 
+		@media all {
+			.page-break	{ display: none; }
+		}
 
+		@media print {
+			.page-break	{ display: block; page-break-before: always; }
+			
+		}
     </style>
   </head>
   <body>
 
-    <a href='#' id='doit_link'>Fetch Story Names from Project</a>
+  <form id='user_selection'>
+  	<div>
+     <h4>Pivotal Project</h4>
 
+     <label for="radio-choice-1">Journey</label>
+     <input type="radio" name="project_choice" id="project_choice_1" value="916734" checked>
+
+    <label for="radio-choice-2">Learning</label>
+    <input type="radio" name="project_choice" id="project_choice_2" value="597827">
+
+    <label for="radio-choice-2">Mobile Android</label>
+    <input type="radio" name="project_choice" id="project_choice_3" value="579041">
+  
+
+  </div>
+      <p>
+        <label for='label'>fetch stories with label:</label>
+        <input type='text' id='label_id' />
+        <a href='#' id='doit_label'>Do it!</a>
+      </p>
+      <p>
+      <label for='sprint'>fetch stories for (done, current, backlog, current_backlog) sprint:</label>
+      <input type='text' id='sprint_id' value="current"/>
+      <a href='#' id='doit_sprint'>Do it!</a>
+      <p>
+      </p>
+	  <input type="checkbox" id='feature' name="feature" value="feature" checked>only include features in result
+	  <br>
+
+    </p>
+    </form>
+    <a href='#' id='print_me'>Print me like a boss!</a>
+
+    <div id='loading'>stand-by, sneaking into pivotal labs...</div>
+	<hr>
     <div class='results'>
       <p id='result_title'></p>
       <div id='result_area'>
       </div>
     </div>
 
-    <script type="text/javascript">
-    var projectId;
 
-      function executeTrackerApiFetch() {
+
+    <script type="text/javascript">
+	    var projectId;
+
+	 $( document ).ajaxStart(function() {
+ 		 $( "#loading" ).show();
+	});   
+
+	 $( document ).ajaxStop(function() {
+ 		 $( "#loading" ).hide();
+	});   
+
+    function executeTrackerApiFetch() {
         // get parameters
-        var token = "545e39c935eea21fbcd7abb3b4d4bca9";
-        var projectId = "916734";
+        var token = "";
+        //var projectId = "916734";
+		// var token = $('#token').val();
+        // projectId = $('#project_id').val();
+        var label = $('#label_id').val();
+        console.log(label);
+
+        // get project id from radio button selection
+        var projectId = $('input[name=project_choice]:checked', '#user_selection').val()
 
         // compose request URL
         var url = 'https://www.pivotaltracker.com/services/v5';
         url += '/projects/' + projectId;
-        url += '/stories?fields=:default,estimate';
-        // url += '/stories?filter=state:delivered,finished,rejected,started';
-        // url += ',unstarted,unscheduled';
+        url += '/stories?filter=state:delivered,finished,rejected,started';
+        url += ',unstarted,unscheduled';
+        url += '&fields=:default,estimate,story_type';
         //url += '&limit=10';
-        url += '&filter=label:habit';
+		url += '&filter=label:"'+label+'"';
+		
+		
+		//check if features wanted from featrue checkbox
+        
+        if ($('#feature').is(':checked')) {
+        	console.log("want");
+			url += ' story_type:feature';
+        };
+
+		console.log(url);
+		
 
         // do API request to get story names
         $.ajax({
@@ -89,14 +165,80 @@
 
       }
 
-      function displayTrackerApiResponse(stories) {
+    function fetchTrackerIteration() {
+        // get parameters
+        var token = "545e39c935eea21fbcd7abb3b4d4bca9";
+        //var projectId = "916734";
+		// var token = $('#token').val();
+        // projectId = $('#project_id').val();
+        var label = $('#label_id').val();
+        //console.log(label);
+        var sprint = $('#sprint_id').val();
+        
+        // get project id from radio button selection
+        var projectId = $('input[name=project_choice]:checked', '#user_selection').val()
 
-        $('#result_title').html('Your stories, dawg!');
+
+        // compose request URL
+        var url = 'https://www.pivotaltracker.com/services/v5';
+        url += '/projects/' + projectId;
+        
+        if (sprint==='') {
+        	url += '/iterations'
+        } else {
+        	url += '/iterations?scope='+sprint;
+        };
+
+        
+        console.log(url);
+
+
+        //do API request to iteration stories
+        $.ajax({
+          url: url,
+          beforeSend: function(xhr) {
+            xhr.setRequestHeader('X-TrackerToken', token);
+          }
+        }).done(getStoriesFromIteration);
+
+      }
+
+      function getStoriesFromIteration(iteration) {
+      	stories = iteration[0].stories;
+      	clean_stories =[];
+
+      	// check if features wanted from featrue checkbox
+        var want_features = $('input[name=feature]:checked', '#user_selection').val()
+
+      	// remove stories that are not features
+      	if (want_features==="feature") {
+	      	for (var i = 0; i < stories.length; i++) {
+	      		if (stories[i].story_type==="feature") {clean_stories.push(stories[i])};
+	      	};
+
+	      displayTrackerApiResponse(clean_stories);
+
+      	} else {
+
+      		displayTrackerApiResponse(stories);;
+      	}
+
+
+      	
+      }
+
+
+      function displayTrackerApiResponse(stories) {
+      	//console.log(stories);
+        
+        var search_results = "Here go your " + stories.length + " stories, dawg!";
+        $('#result_title').html(search_results);
 
         var content = '';
+        $('#result_area').empty();
 
         for (var i=0; i < stories.length;i++) {
-
+		  //console.log(stories[i]);
           var name = stories[i].name;
           // console.log(name);
 
@@ -105,11 +247,14 @@
           // console.log(estimate);
 
           var description = stories[i].description;
-          description = htmlForTextWithEmbeddedNewlines(description);
+          if (description != null) { 
+          	description = htmlForTextWithEmbeddedNewlines(description);
+          };
+
           // console.log(description);
 
 
-          content = '<div class="story">'+'<div class="header"><span class="name">'+name+'</span><span class="estimate">'+estimate+'</span></div>'+'<div class="description">'+description+'</div>'+'</div>';
+          content = '<div class="story">'+'<div class="header"><span class="name">'+name+'</span><span class="estimate">'+estimate+'</span></div>'+'<div class="description">'+description+'</div>'+'</div>'+'<div class="page-break"></div>';
           //content = 'test:'+ estimate;
 
           $('#result_area').append(content);
@@ -135,9 +280,18 @@
           return htmls.join("<br>");
       }
 
+      function printLikeABoss () {
+      	$('#user_selection').hide();
+      	window.print();
+      }
+
 
       $(function() {
-        $('#doit_link').click(executeTrackerApiFetch);
+      	$( "#loading" ).hide();
+        $('#doit_label').click(executeTrackerApiFetch);
+        $('#doit_sprint').click(fetchTrackerIteration);
+        $('#print_me').click(printLikeABoss);
+
         // $('#doit_link').click( function (event) { 
         //   event.preventDefault();
         //   executeTrackerApiFetch;
