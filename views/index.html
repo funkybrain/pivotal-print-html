@@ -1,6 +1,6 @@
 <html>
   <head>
-    <title>Access the Pivotal Tracker API via CORS</title>
+    <title>Suck_it! Pivotal</title>
     <script src='http://ajax.googleapis.com/ajax/libs/jquery/1.10.1/jquery.min.js'
             type='text/javascript'></script>
 
@@ -57,6 +57,10 @@
         -webkit-box-orient: vertical;
       }
 
+      #no_token {
+        color: red;
+      }
+
 		@media all {
 			.page-break	{ display: none; }
 		}
@@ -67,99 +71,130 @@
 		}
     </style>
   </head>
+  
   <body>
 
   <form id='user_selection'>
-  	<div>
-     <h4>Pivotal Project</h4>
+    <fieldset>
+      <legend>Project and Token:</legend>
 
-     <label for="radio-choice-1">Journey</label>
-     <input type="radio" name="project_choice" id="project_choice_1" value="916734" checked>
+      <input type="radio" name="project_choice" id="project_choice_1" value="916734" checked>
+      <label for="radio-choice-1">Journey</label>
 
-    <label for="radio-choice-2">Learning</label>
-    <input type="radio" name="project_choice" id="project_choice_2" value="597827">
+      <input type="radio" name="project_choice" id="project_choice_2" value="597827">
+      <label for="radio-choice-2">Learning</label>
 
-    <label for="radio-choice-2">Mobile Android</label>
-    <input type="radio" name="project_choice" id="project_choice_3" value="579041">
-  
+      <input type="radio" name="project_choice" id="project_choice_3" value="579041">
+      <label for="radio-choice-3">Mobile Android</label>
+    
+      <input type="radio" name="project_choice" id="project_choice_4" value="598611">
+      <label for="radio-choice-4">Mobile iOS</label>
 
-  </div>
-      <p>
-        <label for='label'>fetch stories with label:</label>
+      <input type="radio" name="project_choice" id="project_choice_5" value="735663">
+      <label for="radio-choice-5">Payment</label>
+
+      <br>
+      <label for="token">Token (will be stored locally)</label>
+      <input type="text" name="token" id="token">
+      <em id="no_token"> &lt;&lt; enter your pivotal tracker token. Jetzt!</em>
+    </fieldset>
+     
+    <fieldset>
+      <legend>Filters:</legend>
+        <label for='label'>fetch stories labeled &gt;</label>
         <input type='text' id='label_id' />
         <a href='#' id='doit_label'>Do it!</a>
-      </p>
-      <p>
-      <label for='sprint'>fetch stories for (done, current, backlog, current_backlog) sprint:</label>
-      <input type='text' id='sprint_id' value="current"/>
-      <a href='#' id='doit_sprint'>Do it!</a>
-      <p>
-      </p>
-	  <input type="checkbox" id='feature' name="feature" value="feature" checked>only include features in result
-	  <br>
+        <br>
+        <label for='sprint'>fetch stories for pivotal panel &gt; </label>
+      
+        <input type="radio" name="panel_choice" id="panel_choice_1" value="done" checked>
+        <label for="radio-choice-1">Done</label>
 
-    </p>
+        <input type="radio" name="panel_choice" id="panel_choice_2" value="current">
+        <label for="radio-choice-2">Current</label>
+
+        <input type="radio" name="panel_choice" id="panel_choice_3" value="backlog">
+        <label for="radio-choice-3">Backlog</label>
+      
+        <input type="radio" name="panel_choice" id="panel_choice_4" value="current_backlog">
+        <label for="radio-choice-4">Current + Backlog</label>
+
+        <a href='#' id='doit_sprint'>Do it!</a>
+    </fieldset>
+
+    <fieldset>
+      <legend>Options:</legend>
+      <input type="checkbox" id='feature' name="feature" value="feature" checked>only include features in result
+    </fieldset>
+
     </form>
+
     <a href='#' id='print_me'>Print me like a boss!</a>
 
     <div id='loading'>stand-by, sneaking into pivotal labs...</div>
+
 	<hr>
+
     <div class='results'>
       <p id='result_title'></p>
       <div id='result_area'>
-      </div>
     </div>
 
 
 
     <script type="text/javascript">
-	    var projectId;
+	  
+      var projectId;
+      var tokenId;
 
-	 $( document ).ajaxStart(function() {
- 		 $( "#loading" ).show();
-	});   
+  	   $( document ).ajaxStart(function() {
+   		     $( "#loading" ).show();
+        });   
 
-	 $( document ).ajaxStop(function() {
- 		 $( "#loading" ).hide();
-	});   
+  	   $( document ).ajaxStop(function() {
+   		     $( "#loading" ).hide();
+        });   
 
-    function executeTrackerApiFetch() {
+      // fetch user stories via tracker API 
+      function executeTrackerApiFetch() {
+
         // get parameters
-        var token = "";
-        //var projectId = "916734";
-		// var token = $('#token').val();
-        // projectId = $('#project_id').val();
+        if (localStorage.getItem(token) != null) {
+            tokenId = localStorage.getItem(token);
+          } else  {
+            localStorage.setItem(token, $('#token').val());
+            tokenId = localStorage.getItem(token);
+          };
+
         var label = $('#label_id').val();
-        console.log(label);
+        //console.log(label);
 
         // get project id from radio button selection
         var projectId = $('input[name=project_choice]:checked', '#user_selection').val()
 
         // compose request URL
         var url = 'https://www.pivotaltracker.com/services/v5';
-        url += '/projects/' + projectId;
-        url += '/stories?filter=state:delivered,finished,rejected,started';
-        url += ',unstarted,unscheduled';
-        url += '&fields=:default,estimate,story_type';
-        //url += '&limit=10';
-		url += '&filter=label:"'+label+'"';
+            url += '/projects/' + projectId;
+            url += '/stories?filter=state:delivered,finished,rejected,started';
+            url += ',unstarted,unscheduled';
+            url += '&fields=:default,estimate,story_type';
+            //url += '&limit=10';
+		        url += '&filter=label:"'+label+'"';
 		
 		
-		//check if features wanted from featrue checkbox
-        
+		    //check if features wanted from featrue checkbox
         if ($('#feature').is(':checked')) {
-        	console.log("want");
-			url += ' story_type:feature';
+    			url += ' story_type:feature';
         };
 
-		console.log(url);
+    		console.log(url);
 		
 
         // do API request to get story names
         $.ajax({
           url: url,
           beforeSend: function(xhr) {
-            xhr.setRequestHeader('X-TrackerToken', token);
+            xhr.setRequestHeader('X-TrackerToken', tokenId);
           }
         }).done(displayTrackerApiResponse);
 
@@ -167,9 +202,9 @@
 
     function fetchTrackerIteration() {
         // get parameters
-        var token = "545e39c935eea21fbcd7abb3b4d4bca9";
-        //var projectId = "916734";
-		// var token = $('#token').val();
+        // var token = "545e39c935eea21fbcd7abb3b4d4bca9";
+        // var projectId = "916734";
+		    var token = $('#token').val();
         // projectId = $('#project_id').val();
         var label = $('#label_id').val();
         //console.log(label);
@@ -287,15 +322,32 @@
 
 
       $(function() {
-      	$( "#loading" ).hide();
+      	
+        // hide messages on loading page
+        $('#loading').hide();
+        $('#no_token').hide();
+
+        // actions
         $('#doit_label').click(executeTrackerApiFetch);
         $('#doit_sprint').click(fetchTrackerIteration);
         $('#print_me').click(printLikeABoss);
 
-        // $('#doit_link').click( function (event) { 
-        //   event.preventDefault();
-        //   executeTrackerApiFetch;
-        //   })     
+        // assign and display stored PT token
+        if (localStorage.getItem(token) != null) {
+            $('#token').val(localStorage.getItem(token));
+          } else {
+            $('#no_token').show();
+          };
+
+        // remove warning if token field completed
+        $('#token').blur(function() {
+          if ($('#token').val() != "") {
+             $('#no_token').hide(); // TODO regex to check for token pattern to make it more geil
+          };
+        }); 
+
+        // clear local storage with window.localStorage.clear()
+     
       });
 
     </script>
