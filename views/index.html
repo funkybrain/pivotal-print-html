@@ -81,6 +81,7 @@
 			.page-break	{ display: block; page-break-before: always; }
 			
 		}
+
     </style>
   </head>
   
@@ -281,8 +282,8 @@
       function displayTrackerApiResponse(stories) {
       	//console.log(stories);
         
-        var search_results = "Here go your " + stories.length + " stories, dawg!";
-        $('#result_title').html(search_results);
+        //var search_results = "Here go your " + stories.length + " stories, dawg!";
+        //$('#result_title').html(search_results);
 
         var content = '';
         $('#result_area').empty();
@@ -306,7 +307,7 @@
 
           content = '<div class="story">'+'<div class="header"><span class="name">'+name+'</span><span class="estimate">'+estimate+'</span></div>'+'<div class="description">'+description+'</div>'+'</div>'
 
-          if ( i%4 === 0 ) {
+          if ( (i + 1) % 4 === 0 && i !=0 ) {
             content += '<div class="break-float"></div> <div class="page-break"></div>';
           };
 
